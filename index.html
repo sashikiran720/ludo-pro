@@ -169,6 +169,8 @@
             display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
             max-width: 100px; width: 100px; 
             transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.3); position: relative;
+            overflow: visible; /* FIXED: Prevent emoji clipping */
+            z-index: 5;
         }
 
         .player-avatar {
@@ -177,7 +179,7 @@
         }
         .player-info { display: flex; flex-direction: column; overflow: hidden; width: 100%; }
 
-        .player-card.active { transform: scale(1.05); background: rgba(30, 41, 59, 0.9); border-color: rgba(255,255,255,0.4); z-index: 2; }
+        .player-card.active { transform: scale(1.05); background: rgba(30, 41, 59, 0.9); border-color: rgba(255,255,255,0.4); z-index: 8; }
         .player-card[data-player="0"].active { box-shadow: 0 0 20px rgba(255, 42, 95, 0.6); }
         .player-card[data-player="1"].active { box-shadow: 0 0 20px rgba(0, 230, 118, 0.6); }
         .player-card[data-player="2"].active { box-shadow: 0 0 20px rgba(255, 234, 0, 0.6); }
@@ -190,18 +192,18 @@
         /* Emoji Bubble - Fixed Animation & Positioning */
         .emoji-bubble {
             position: absolute;
-            top: -45px;
+            top: -15px; /* FIXED: Close to the card */
             left: 50%;
             transform: translateX(-50%) scale(0);
             background: #fff;
             color: #000;
-            font-size: 24px;
-            padding: 6px 12px;
+            font-size: 20px;
+            padding: 4px 8px;
             border-radius: 20px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             opacity: 0;
             pointer-events: none;
-            z-index: 100;
+            z-index: 100; /* High z-index */
             white-space: nowrap;
         }
 
@@ -213,8 +215,8 @@
             0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
             10% { transform: translateX(-50%) scale(1.2); opacity: 1; }
             15% { transform: translateX(-50%) scale(1); opacity: 1; }
-            80% { transform: translateX(-50%) translateY(-10px) scale(1); opacity: 1; }
-            100% { transform: translateX(-50%) translateY(-25px) scale(0.8); opacity: 0; }
+            80% { transform: translateX(-50%) translateY(-5px); scale(1); opacity: 1; }
+            100% { transform: translateX(-50%) translateY(-15px) scale(0.8); opacity: 0; }
         }
 
         /* Mini Dice (Player Cards) */
@@ -953,7 +955,7 @@
 
         let pData =[null, null, null, null];
         for(let i=0; i<4; i++) {
-            pData[i] = { active: false, isRobot: false, userId: null, name: "Waiting...", score: 0, tokens: [-1,-1,-1,-1] };
+            pData[i] = { active: false, isRobot: false, userId: null, name: "Waiting...", score: 0, tokens:[-1,-1,-1,-1] };
         }
 
         pData[selectedColorIndex] = { active: true, isRobot: false, userId: localUserId, name: myName, score: 0, tokens:[-1,-1,-1,-1] };
@@ -1025,7 +1027,7 @@
             if (!assigned) {
                 let taken =[];
                 safePlayers.forEach((p, i) => { if (p && p.active && (p.userId || p.isRobot)) taken.push(i); });
-                let avail = [0,1,2,3].filter(c => !taken.includes(c) && safePlayers[c].active);
+                let avail =[0,1,2,3].filter(c => !taken.includes(c) && safePlayers[c].active);
 
                 if (selectedColorIndex === -1 || taken.includes(selectedColorIndex) || !safePlayers[selectedColorIndex].active) {
                     if (avail.length === 0) return alert("Room is full!");
