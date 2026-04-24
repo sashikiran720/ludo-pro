@@ -126,7 +126,7 @@
         /* Game App Layout */
         #app {
             display: flex; flex-direction: column; align-items: center; min-height: 100vh;
-            padding: 15px; padding-bottom: 150px; /* Kept extra padding for bottom dice */ gap: 20px; width: 100%; max-width: 100%; margin: 0 auto; overflow-x: hidden;
+            padding: 15px; padding-bottom: 150px; /* Space for fixed bottom dice */ gap: 20px; width: 100%; max-width: 100%; margin: 0 auto; overflow-x: hidden;
         }
 
         /* Strict 3x3 Ludo Grid Layout */
@@ -187,40 +187,34 @@
         .player-score { font-size: 10px; color: #38bdf8; font-weight: 800; margin: 2px 0; }
         .player-status { font-size: 9px; color: #94a3b8; font-weight: 600;}
 
-        /* Emoji Bubble */
+        /* Emoji Bubble - Fixed Animation & Positioning */
         .emoji-bubble {
             position: absolute;
-            top: -40px;
+            top: -45px;
             left: 50%;
             transform: translateX(-50%) scale(0);
             background: #fff;
             color: #000;
-            font-size: 22px;
-            padding: 6px 10px;
+            font-size: 24px;
+            padding: 6px 12px;
             border-radius: 20px;
             box-shadow: 0 6px 20px rgba(0,0,0,0.3);
             opacity: 0;
             pointer-events: none;
             z-index: 100;
+            white-space: nowrap;
         }
 
         .emoji-bubble.show {
-            animation: emojiPop 2s ease forwards;
+            animation: emojiPop 3s ease forwards;
         }
 
         @keyframes emojiPop {
-            0% {
-                transform: translateX(-50%) scale(0);
-                opacity: 0;
-            }
-            40% {
-                transform: translateX(-50%) scale(1.2);
-                opacity: 1;
-            }
-            100% {
-                transform: translateX(-50%) translateY(-20px) scale(1);
-                opacity: 0;
-            }
+            0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+            10% { transform: translateX(-50%) scale(1.2); opacity: 1; }
+            15% { transform: translateX(-50%) scale(1); opacity: 1; }
+            80% { transform: translateX(-50%) translateY(-10px) scale(1); opacity: 1; }
+            100% { transform: translateX(-50%) translateY(-25px) scale(0.8); opacity: 0; }
         }
 
         /* Mini Dice (Player Cards) */
@@ -290,11 +284,21 @@
             background: rgba(255,255,255,0.8); border-radius: 50%; transform: rotate(-30deg); filter: blur(1px);
         }
 
+        /* Strictly turn-based smart glow pulse */
         .token.active-turn {
-            box-shadow: 0 0 15px 5px currentColor, inset 0 -4px 6px rgba(0,0,0,0.4), inset 0 3px 6px rgba(255,255,255,0.6);
-            animation: token-pulse 1.5s infinite alternate; z-index: 20;
+            animation: token-pulse 1.5s infinite alternate; 
+            z-index: 20;
         }
-        @keyframes token-pulse { 0% { filter: brightness(1); } 100% { filter: brightness(1.3); } }
+        @keyframes token-pulse { 
+            0% { 
+                filter: brightness(1); 
+                box-shadow: 0 0 8px 2px currentColor, inset 0 -4px 6px rgba(0,0,0,0.4), inset 0 3px 6px rgba(255,255,255,0.6); 
+            } 
+            100% { 
+                filter: brightness(1.3); 
+                box-shadow: 0 0 18px 6px currentColor, inset 0 -4px 6px rgba(0,0,0,0.4), inset 0 3px 6px rgba(255,255,255,0.6); 
+            } 
+        }
         
         .token:hover { transform: translate(-50%, -50%) scale(1.1) !important; z-index: 30; }
         
@@ -773,6 +777,9 @@
     let voiceJoined = false;
     let voiceMuted = false;
 
+    // Animation & State Flags
+    let isAnimatingTokens = false;
+
     function initAudio() { 
         if (audioCtx.state === 'suspended') audioCtx.resume(); 
         killSound.play().then(() => { killSound.pause(); killSound.currentTime = 0; }).catch(() => {});
@@ -909,7 +916,7 @@
             if (parseInt(pIdx) === myPlayerIndex || isHost) {
                 setTimeout(() => {
                     db.ref(`rooms/${currentRoomId}/emojis/${pIdx}`).remove().catch(()=>{});
-                }, 2000);
+                }, 3000); // clear after animation
             }
         }
     }
@@ -919,7 +926,7 @@
         if(bubble) {
             bubble.innerText = emoji;
             bubble.classList.remove('show');
-            void bubble.offsetWidth; // trigger reflow
+            void bubble.offsetWidth; // trigger reflow to restart animation
             bubble.classList.add('show');
         }
     }
@@ -1104,22 +1111,18 @@
         else { navigator.clipboard.writeText(text); showToast("Link copied to clipboard!"); }
     }
 
-    function buildPlayerCards(initPlayers) {['0', '1', '2', '3'].forEach(s => {
-            const el = document.getElementById('slot-'+s);
-            if(el) el.innerHTML = '';
-        });
-        
+    // Smart Player Card Builder - Modifies instead of re-creating to prevent animation interruption
+    function buildPlayerCards(initPlayers) {
         initPlayers.forEach((p, i) => {
-            if (!p || !p.active || (!p.userId && !p.isRobot)) return;
-            
             let container = document.getElementById('slot-' + i);
             if (!container) return;
             
-            let card = document.createElement('div'); 
-            card.className = `player-card`; 
-            card.id = `card-player-${i}`;
-            card.dataset.player = i;
+            if (!p || !p.active || (!p.userId && !p.isRobot)) {
+                container.innerHTML = ''; 
+                return;
+            }
             
+            let card = document.getElementById(`card-player-${i}`);
             let t = p.userId ? (p.name || PLAYER_NAMES[i]) : (p.name || `${PLAYER_NAMES[i]} (Robot)`);
             if (i === myPlayerIndex) t += " (You)";
             
@@ -1127,23 +1130,44 @@
             let statusText = finishedPlayers.includes(i) ? "Finished!" : "Playing...";
             let statusColor = finishedPlayers.includes(i) ? "#94a3b8" : "var(--green)";
             
-            card.innerHTML = `
-                <div class="emoji-bubble" id="emoji-bubble-${i}"></div>
-                <div class="player-avatar" style="background: ${COLORS[i]}; box-shadow: 0 0 10px ${COLORS[i]}">${initial}</div>
-                <div class="player-info">
-                    <div class="player-name" style="color: ${COLORS[i]}" title="${t}">${t}</div>
-                    <div class="player-score" id="score-player-${i}">Wins: ${p.score || 0}</div>
-                    <div class="player-status" id="status-player-${i}" style="color:${statusColor}">${statusText}</div>
-                </div>
-                <div class="mini-dice-container" id="mini-dice-container-${i}" style="color: ${COLORS[i]}">
-                    <div class="mini-dice" id="mini-dice-${i}" onclick="performUserRoll()">
-                        <div class="dot hidden"></div><div class="dot hidden"></div><div class="dot hidden"></div>
-                        <div class="dot hidden"></div><div class="dot hidden"></div><div class="dot hidden"></div>
-                        <div class="dot hidden"></div><div class="dot hidden"></div><div class="dot hidden"></div>
+            if (!card) {
+                card = document.createElement('div'); 
+                card.className = `player-card`; 
+                card.id = `card-player-${i}`;
+                card.dataset.player = i;
+                
+                card.innerHTML = `
+                    <div class="emoji-bubble" id="emoji-bubble-${i}"></div>
+                    <div class="player-avatar" id="avatar-${i}" style="background: ${COLORS[i]}; box-shadow: 0 0 10px ${COLORS[i]}">${initial}</div>
+                    <div class="player-info">
+                        <div class="player-name" id="name-${i}" style="color: ${COLORS[i]}" title="${t}">${t}</div>
+                        <div class="player-score" id="score-player-${i}">Wins: ${p.score || 0}</div>
+                        <div class="player-status" id="status-player-${i}" style="color:${statusColor}">${statusText}</div>
                     </div>
-                </div>
-            `;
-            container.appendChild(card);
+                    <div class="mini-dice-container" id="mini-dice-container-${i}" style="color: ${COLORS[i]}">
+                        <div class="mini-dice" id="mini-dice-${i}" onclick="performUserRoll()">
+                            <div class="dot hidden"></div><div class="dot hidden"></div><div class="dot hidden"></div>
+                            <div class="dot hidden"></div><div class="dot hidden"></div><div class="dot hidden"></div>
+                            <div class="dot hidden"></div><div class="dot hidden"></div><div class="dot hidden"></div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML = '';
+                container.appendChild(card);
+            } else {
+                // Update elements individually to avoid destroying DOM states
+                let avatarEl = document.getElementById(`avatar-${i}`);
+                if(avatarEl) avatarEl.innerText = initial;
+                
+                let nameEl = document.getElementById(`name-${i}`);
+                if(nameEl) { nameEl.innerText = t; nameEl.title = t; }
+                
+                let scoreEl = document.getElementById(`score-player-${i}`);
+                if(scoreEl) scoreEl.innerText = `Wins: ${p.score || 0}`;
+                
+                let statusEl = document.getElementById(`status-player-${i}`);
+                if(statusEl) { statusEl.innerText = statusText; statusEl.style.color = statusColor; }
+            }
         });
     }
 
@@ -1449,19 +1473,39 @@
         if (pos >= 51 && pos <= 55) return HOME_STRETCHES[pIndex][pos - 51];
         if (pos === 56) return HOME_COORDS[pIndex]; return[0,0]; 
     }
+    
     function updateTokensDOM() {
         if (!visualPlayers) return; let overlapMap = {};
+        
+        let currentMoves =[];
+        if (GAME_STATE === 'WAITING_MOVE') {
+            currentMoves = getLegalMoves(currentTurn, diceValue);
+        }
+
         for (let pIndex = 0; pIndex < 4; pIndex++) {
             if (!visualPlayers[pIndex] || !visualPlayers[pIndex].active) continue;
             for (let tIndex = 0; tIndex < 4; tIndex++) {
                 let el = document.getElementById(`token-${pIndex}-${tIndex}`); if(!el) continue;
                 
-                if (pIndex === currentTurn && GAME_STATE === 'WAITING_MOVE') {
-                    el.classList.add('active-turn');
+                el.style.color = COLORS[pIndex];
+
+                // Turn-based strictly controlled glow
+                if (pIndex === currentTurn && !isAnimatingTokens) {
+                    if (GAME_STATE === 'WAITING_MOVE') {
+                        if (currentMoves.length > 0) {
+                            if (currentMoves.includes(tIndex)) el.classList.add('active-turn');
+                            else el.classList.remove('active-turn');
+                        } else {
+                            el.classList.add('active-turn');
+                        }
+                    } else if (GAME_STATE === 'WAITING_ROLL') {
+                        el.classList.add('active-turn');
+                    } else {
+                        el.classList.remove('active-turn');
+                    }
                 } else {
                     el.classList.remove('active-turn');
                 }
-                el.style.color = COLORS[pIndex];
 
                 let pos = visualPlayers[pIndex].tokens[tIndex];
                 let coords = (pos === -1) ? BASE_POSITIONS[pIndex][tIndex] : getLogicalCoordinates(pIndex, pos);
@@ -1513,6 +1557,9 @@
     }
 
     async function animateTokensTo(newPlayers) {
+        isAnimatingTokens = true;
+        updateTokensDOM(); // Refresh visually to disable glow during animation
+
         for(let p=0; p<4; p++) {
             if(!newPlayers[p] || !newPlayers[p].active) continue;
             for(let t=0; t<4; t++) {
@@ -1557,6 +1604,9 @@
                 }
             }
         }
+
+        isAnimatingTokens = false;
+        updateTokensDOM(); // Restore correct turn-based glow
     }
 
     function showToast(msg, isError = false) {
@@ -1630,7 +1680,7 @@
         else {
             rollBtn.disabled = (!isMyTurn || adminDiceControl); 
             if (GAME_STATE === 'WAITING_MOVE') {
-                if (isMyTurn) { msg.innerText = "Select piece to move"; msg.style.color = COLORS[currentTurn]; let moves = getLegalMoves(currentTurn, diceValue); moves.forEach(tIndex => { let el = document.getElementById(`token-${currentTurn}-${tIndex}`); if(el) el.classList.add('highlight'); }); } 
+                if (isMyTurn) { msg.innerText = "Select piece to move"; msg.style.color = COLORS[currentTurn]; } 
                 else { msg.innerText = players[currentTurn] ? `${players[currentTurn].name}'s Turn` : "Opponent Turn"; msg.style.color = "#94a3b8"; }
             } else {
                 if (isMyTurn) { msg.innerText = adminDiceControl ? "Waiting for Admin roll" : "Your Turn! Roll Dice"; msg.style.color = COLORS[currentTurn]; } 
@@ -1897,3 +1947,4 @@
 
 </body>
 </html>
+
