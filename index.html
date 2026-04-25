@@ -222,34 +222,38 @@
         .player-score { font-size: 10px; color: #38bdf8; font-weight: 800; margin: 2px 0; }
         .player-status { font-size: 9px; color: #94a3b8; font-weight: 600;}
 
-        /* Emoji Bubble */
+        /* Message / Emoji Bubble */
         .emoji-bubble {
             position: absolute;
-            top: -15px; 
+            top: -20px; 
             left: 50%;
             transform: translateX(-50%) scale(0);
             background: #fff;
             color: #000;
-            font-size: 20px;
-            padding: 4px 8px;
+            font-size: 14px;
+            font-weight: 600;
+            padding: 6px 12px;
             border-radius: 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             opacity: 0;
             pointer-events: none;
             z-index: 100; 
             white-space: nowrap;
+            max-width: 130px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .emoji-bubble.show {
-            animation: emojiPop 3s ease forwards;
+            animation: bubblePop 3s ease forwards;
         }
 
-        @keyframes emojiPop {
+        @keyframes bubblePop {
             0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
-            10% { transform: translateX(-50%) scale(1.2); opacity: 1; }
+            10% { transform: translateX(-50%) scale(1.1); opacity: 1; }
             15% { transform: translateX(-50%) scale(1); opacity: 1; }
-            80% { transform: translateX(-50%) translateY(-5px); scale(1); opacity: 1; }
-            100% { transform: translateX(-50%) translateY(-15px) scale(0.8); opacity: 0; }
+            80% { transform: translateX(-50%) translateY(-10px) scale(1); opacity: 1; }
+            100% { transform: translateX(-50%) translateY(-20px) scale(0.8); opacity: 0; }
         }
 
         /* Mini Dice (Player Cards) */
@@ -303,6 +307,7 @@
             transform-origin: center; z-index: 10;
             box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 -4px 6px rgba(0,0,0,0.4), inset 0 3px 6px rgba(255,255,255,0.6);
             border: 2px solid rgba(0,0,0,0.2);
+            display: none; /* Hidden by default until dynamic render */
         }
         
         .token[data-color="0"] { background: radial-gradient(circle at 30% 30%, #ff8a9f, var(--red) 60%, #990022); }
@@ -716,6 +721,7 @@
                     <span class="emoji" onclick="sendQuickEmoji('🔥')">🔥</span>
                     <span class="emoji" onclick="sendQuickEmoji('😡')">😡</span>
                     <span class="emoji" onclick="sendQuickEmoji('❤️')">❤️</span>
+                    <span class="emoji" onclick="sendQuickEmoji('😭')">😭</span>
                 </div>
                 <div class="chat-input-container">
                     <input type="text" id="chat-input" maxlength="100" placeholder="Type message...">
@@ -942,7 +948,7 @@
         clearTimeout(colorTimer);
     }
 
-    function proceedToColorFromCreate() {
+    async function proceedToColorFromCreate() {
         pendingName = document.getElementById('create-name').value.trim();
         if (!pendingName) return showToast("Please enter your name!", true);
         
@@ -950,8 +956,38 @@
         flowType = 'create';
         selectedColorIndex = -1; 
         
-        updateColorUX(null); // All available
-        
+        // Create an empty room first
+        initAudio();
+        isHost = true; 
+        let reqPlayers = pendingMode;
+        turnTimeLength = 20000;
+
+        let pData =[null, null, null, null];
+        for(let i=0; i<4; i++) {
+            pData[i] = { active: false, isRobot: false, userId: null, name: "Waiting...", score: 0, tokens:[-1,-1,-1,-1] };
+        }
+
+        let roomId; let isUnique = false;
+        while (!isUnique) {
+            roomId = Math.floor(100000 + Math.random() * 900000).toString();
+            let snapshot = await db.ref('rooms/' + roomId).once('value');
+            if (!snapshot.exists()) isUnique = true;
+        }
+
+        await db.ref('rooms/' + roomId).set({ 
+            diceValue: 1, rollCount: 0, currentTurn: 0, gameState: 'WAITING_ROLL', 
+            consecutiveSixCount: 0, turnDeadline: 0, players: pData, requiredPlayers: reqPlayers,
+            gameStarted: false, turnTimeLength: turnTimeLength, adminDiceControl: false,
+            settings: { voiceEnabled: true, chatEnabled: true },
+            finishedPlayers:[], results:[]
+        });
+
+        pendingRoomId = roomId;
+
+        if (lobbyRoomRef) lobbyRoomRef.off('value');
+        lobbyRoomRef = db.ref('rooms/' + pendingRoomId + '/players');
+        lobbyRoomRef.on('value', snap => { updateColorUX(snap.val()); });
+
         hideModals();
         document.getElementById('color-modal').style.display = 'flex';
         startColorTimer();
@@ -970,7 +1006,6 @@
             flowType = 'join';
             selectedColorIndex = -1; 
             
-            // Live sync taken colors
             if (lobbyRoomRef) lobbyRoomRef.off('value');
             lobbyRoomRef = db.ref('rooms/' + pendingRoomId + '/players');
             lobbyRoomRef.on('value', snap => { updateColorUX(snap.val()); });
@@ -983,7 +1018,7 @@
 
     async function startRobotGame() {
         initAudio();
-        let myName = document.getElementById('robot-name').value.trim() || "Player";
+        pendingName = document.getElementById('robot-name').value.trim() || "Player";
         let botCount = parseInt(document.getElementById('robot-count').value);
 
         if (robotSelectedColor === -1) {
@@ -992,10 +1027,8 @@
 
         let pData =[null, null, null, null];
         for(let i=0; i<4; i++) {
-            pData[i] = { active: false, isRobot: false, userId: null, name: "Waiting...", score: 0, tokens: [-1,-1,-1,-1] };
+            pData[i] = { active: false, isRobot: false, userId: null, name: "Waiting...", score: 0, tokens:[-1,-1,-1,-1] };
         }
-
-        pData[robotSelectedColor] = { active: true, isRobot: false, userId: localUserId, name: myName, score: 0, tokens:[-1,-1,-1,-1] };
 
         let availableColors =[0,1,2,3].filter(c => c !== robotSelectedColor);
         availableColors.sort(() => Math.random() - 0.5);
@@ -1012,17 +1045,17 @@
             if (!snapshot.exists()) isUnique = true;
         }
 
-        db.ref('rooms/' + roomId).set({ 
-            diceValue: 1, rollCount: 0, currentTurn: robotSelectedColor, gameState: 'WAITING_ROLL', 
-            consecutiveSixCount: 0, turnDeadline: Date.now() + serverTimeOffset + 20000, players: pData, requiredPlayers: botCount + 1,
-            gameStarted: true, turnTimeLength: 20000, adminDiceControl: false,
+        await db.ref('rooms/' + roomId).set({ 
+            diceValue: 1, rollCount: 0, currentTurn: 0, gameState: 'WAITING_ROLL', 
+            consecutiveSixCount: 0, turnDeadline: 0, players: pData, requiredPlayers: botCount + 1,
+            gameStarted: false, turnTimeLength: 20000, adminDiceControl: false,
             settings: { voiceEnabled: false, chatEnabled: false }, 
             finishedPlayers:[], results:[]
-        }).then(() => {
-            pendingName = myName; 
-            selectedColorIndex = robotSelectedColor;
-            executeJoinRoom(roomId);
         });
+        
+        pendingRoomId = roomId;
+        selectedColorIndex = robotSelectedColor;
+        executeJoinRoom(roomId);
     }
 
     function startColorTimer() {
@@ -1064,11 +1097,7 @@
             return showToast("Selected color is already taken!", true);
         }
 
-        if (flowType === 'create') {
-            executeCreateRoom();
-        } else if (flowType === 'join') {
-            executeJoinRoom(pendingRoomId);
-        }
+        executeJoinRoom(pendingRoomId);
     }
 
     function updateColorUX(playersData) {
@@ -1100,24 +1129,15 @@
         return nxt;
     }
 
-    // Emoji Logic Functions
-    function handleEmojiSnap(snap) {
-        const pIdx = snap.key;
-        const data = snap.val();
-        if (data && data.emoji) {
-            showEmojiBubble(pIdx, data.emoji);
-            if (parseInt(pIdx) === myPlayerIndex || isHost) {
-                setTimeout(() => {
-                    db.ref(`rooms/${currentRoomId}/emojis/${pIdx}`).remove().catch(()=>{});
-                }, 3000); 
-            }
-        }
-    }
-
-    function showEmojiBubble(pIdx, emoji) {
+    function showBubble(pIdx, text) {
         const bubble = document.getElementById(`emoji-bubble-${pIdx}`);
         if(bubble) {
-            bubble.innerText = emoji;
+            bubble.innerText = text;
+            if(text.length <= 2) {
+                bubble.style.fontSize = '24px';
+            } else {
+                bubble.style.fontSize = '14px';
+            }
             bubble.classList.remove('show');
             void bubble.offsetWidth; 
             bubble.classList.add('show');
@@ -1127,39 +1147,20 @@
     // -----------------------------------------
     // ROOM CORE EXECUTION
     // -----------------------------------------
-    async function executeCreateRoom() {
-        initAudio();
-        isHost = true; 
-        let reqPlayers = pendingMode;
-        turnTimeLength = 20000;
-
-        let pData =[null, null, null, null];
-        for(let i=0; i<4; i++) {
-            pData[i] = { active: false, isRobot: false, userId: null, name: "Waiting...", score: 0, tokens: [-1,-1,-1,-1] };
+    function initTokensDOM() {
+        const container = document.getElementById('tokens-container'); 
+        container.innerHTML = '';
+        for (let pIndex = 0; pIndex < 4; pIndex++) {
+            for (let tIndex = 0; tIndex < 4; tIndex++) {
+                let tEl = document.createElement('div'); 
+                tEl.className = 'token'; 
+                tEl.id = `token-${pIndex}-${tIndex}`;
+                tEl.dataset.color = pIndex;
+                tEl.style.display = 'none'; 
+                tEl.onclick = () => handleTokenClick(pIndex, tIndex);
+                container.appendChild(tEl);
+            }
         }
-
-        pData[selectedColorIndex] = { active: true, isRobot: false, userId: localUserId, name: pendingName, score: 0, tokens:[-1,-1,-1,-1] };
-
-        let needed = pendingMode - 1;
-        let currentAvail =[0,1,2,3].filter(c => c !== selectedColorIndex);
-        for(let i=0; i<needed; i++) {
-            pData[currentAvail[i]].active = true;
-        }
-
-        let roomId; let isUnique = false;
-        while (!isUnique) {
-            roomId = Math.floor(100000 + Math.random() * 900000).toString();
-            let snapshot = await db.ref('rooms/' + roomId).once('value');
-            if (!snapshot.exists()) isUnique = true;
-        }
-
-        db.ref('rooms/' + roomId).set({ 
-            diceValue: 1, rollCount: 0, currentTurn: selectedColorIndex, gameState: 'WAITING_ROLL', 
-            consecutiveSixCount: 0, turnDeadline: 0, players: pData, requiredPlayers: reqPlayers,
-            gameStarted: false, turnTimeLength: turnTimeLength, adminDiceControl: false,
-            settings: { voiceEnabled: true, chatEnabled: true },
-            finishedPlayers:[], results:[]
-        }).then(() => executeJoinRoom(roomId));
     }
 
     function executeJoinRoom(roomId) {
@@ -1193,6 +1194,10 @@
             
             let updates = {};
             if (!assigned) {
+                if (safePlayers[selectedColorIndex].active && safePlayers[selectedColorIndex].userId) {
+                    return showToast("Color taken during join! Try again.", true);
+                }
+                
                 myPlayerIndex = selectedColorIndex; assigned = true;
                 
                 safePlayers[myPlayerIndex] = {
@@ -1205,6 +1210,14 @@
             if (filledSlots >= data.requiredPlayers && !data.gameStarted) {
                 updates['gameStarted'] = true;
                 updates['turnDeadline'] = Date.now() + serverTimeOffset + (data.turnTimeLength || 20000);
+                
+                let firstActive = 0;
+                for(let i=0; i<4; i++){
+                    if(safePlayers[i].active && (safePlayers[i].userId || safePlayers[i].isRobot)) {
+                        firstActive = i; break;
+                    }
+                }
+                updates['currentTurn'] = firstActive;
             }
 
             if (Object.keys(updates).length > 0) db.ref('rooms/' + roomId).update(updates);
@@ -1231,18 +1244,13 @@
             db.ref(`rooms/${currentRoomId}/signals/${myPlayerIndex}`).remove();
 
             createBoardDOM(); 
+            initTokensDOM(); // Create all hidden tokens upfront
             buildPlayerCards(safePlayers);
-            initTokensDOM(safePlayers); 
 
             db.ref('rooms/' + roomId).on('value', snap => { 
                 if (snap.val()) queueSync(snap.val()); 
                 else { alert("Room closed"); globalExitRoom(false); }
             });
-
-            // Emoji listeners
-            db.ref('rooms/' + roomId + '/emojis').off();
-            db.ref('rooms/' + roomId + '/emojis').on('child_added', handleEmojiSnap);
-            db.ref('rooms/' + roomId + '/emojis').on('child_changed', handleEmojiSnap);
 
             chatLoaded = false;
             db.ref('rooms/' + roomId + '/messages').once('value', () => chatLoaded = true);
@@ -1272,7 +1280,7 @@
         else { navigator.clipboard.writeText(text); showToast("Link copied to clipboard!"); }
     }
 
-    // Smart Player Card Builder - Modifies instead of re-creating to prevent animation interruption
+    // Smart Player Card Builder 
     function buildPlayerCards(initPlayers) {
         initPlayers.forEach((p, i) => {
             let container = document.getElementById('slot-' + i);
@@ -1520,8 +1528,23 @@
 
         if (data.rollCount > localRollCount) { localRollCount = data.rollCount; await animateDice(data.diceValue); }
 
-        if (!visualPlayers) { visualPlayers = JSON.parse(JSON.stringify(players)); updateTokensDOM(); } 
-        else { await animateTokensTo(players); }
+        if (!visualPlayers) { 
+            visualPlayers = JSON.parse(JSON.stringify(players)); 
+            updateTokensDOM(); 
+        } else { 
+            // Sync new players to visualPlayers immediately before animating
+            players.forEach((p, i) => {
+                if (p && p.active && (p.userId || p.isRobot)) {
+                    if (!visualPlayers[i] || !visualPlayers[i].active) {
+                        visualPlayers[i] = JSON.parse(JSON.stringify(p));
+                    }
+                } else if (!p || !p.active) {
+                    if (visualPlayers[i]) visualPlayers[i].active = false;
+                }
+            });
+            updateTokensDOM(); // Ensure tokens exist in DOM
+            await animateTokensTo(players); 
+        }
 
         currentTurn = data.currentTurn || 0; GAME_STATE = data.gameState;
         diceValue = data.diceValue; consecutiveSixCount = data.consecutiveSixCount || 0;
@@ -1616,18 +1639,7 @@
             }
         }
     }
-    function initTokensDOM(initPlayers) {
-        const container = document.getElementById('tokens-container'); container.innerHTML = '';
-        for (let pIndex = 0; pIndex < 4; pIndex++) {
-            if(!initPlayers[pIndex] || !initPlayers[pIndex].active) continue;
-            for (let tIndex = 0; tIndex < 4; tIndex++) {
-                let tEl = document.createElement('div'); tEl.className = 'token'; tEl.id = `token-${pIndex}-${tIndex}`;
-                tEl.dataset.color = pIndex;
-                tEl.onclick = () => handleTokenClick(pIndex, tIndex);
-                container.appendChild(tEl);
-            }
-        }
-    }
+    
     function getLogicalCoordinates(pIndex, pos) {
         if (pos >= 0 && pos <= 50) return TRACK[(pos + START_OFFSETS[pIndex]) % 52];
         if (pos >= 51 && pos <= 55) return HOME_STRETCHES[pIndex][pos - 51];
@@ -1635,7 +1647,8 @@
     }
     
     function updateTokensDOM() {
-        if (!visualPlayers) return; let overlapMap = {};
+        if (!visualPlayers) return; 
+        let overlapMap = {};
         
         let currentMoves =[];
         if (GAME_STATE === 'WAITING_MOVE') {
@@ -1643,10 +1656,25 @@
         }
 
         for (let pIndex = 0; pIndex < 4; pIndex++) {
-            if (!visualPlayers[pIndex] || !visualPlayers[pIndex].active) continue;
+            let isActive = visualPlayers[pIndex] && visualPlayers[pIndex].active && (visualPlayers[pIndex].userId || visualPlayers[pIndex].isRobot);
+
             for (let tIndex = 0; tIndex < 4; tIndex++) {
-                let el = document.getElementById(`token-${pIndex}-${tIndex}`); if(!el) continue;
+                let el = document.getElementById(`token-${pIndex}-${tIndex}`); 
+                if(!el) {
+                    el = document.createElement('div');
+                    el.className = 'token';
+                    el.id = `token-${pIndex}-${tIndex}`;
+                    el.dataset.color = pIndex;
+                    el.onclick = () => handleTokenClick(pIndex, tIndex);
+                    document.getElementById('tokens-container').appendChild(el);
+                }
                 
+                if (!isActive) {
+                    el.style.display = 'none';
+                    continue;
+                }
+
+                el.style.display = 'block';
                 el.style.color = COLORS[pIndex];
 
                 if (pIndex === currentTurn && !isAnimatingTokens) {
@@ -1801,7 +1829,7 @@
             let miniContainer = document.getElementById(`mini-dice-container-${i}`);
             
             if (miniContainer) {
-                if (i === currentTurn && GAME_STATE === 'WAITING_ROLL' && gameStarted) {
+                if (i === currentTurn && gameStarted && GAME_STATE !== 'GAME_OVER') {
                     miniContainer.classList.add('active');
                 } else {
                     miniContainer.classList.remove('active');
@@ -1956,7 +1984,7 @@
         let newPlayers = JSON.parse(JSON.stringify(players));
         newPlayers.forEach(p => { if(p) p.tokens =[-1,-1,-1,-1]; });
         let nextTurn = getNextTurn(3, newPlayers,[]);
-        db.ref('rooms/' + currentRoomId).update({ players: newPlayers, gameState: 'WAITING_ROLL', currentTurn: nextTurn, consecutiveSixCount: 0, turnDeadline: Date.now() + serverTimeOffset + turnTimeLength, rollCount: localRollCount + 1, finishedPlayers: [], results:[] });
+        db.ref('rooms/' + currentRoomId).update({ players: newPlayers, gameState: 'WAITING_ROLL', currentTurn: nextTurn, consecutiveSixCount: 0, turnDeadline: Date.now() + serverTimeOffset + turnTimeLength, rollCount: localRollCount + 1, finishedPlayers:[], results:[] });
     }
 
     // -----------------------------------------
@@ -1976,19 +2004,31 @@
         if (!currentRoomId || myPlayerIndex === -1) return;
         let myName = players[myPlayerIndex] ? players[myPlayerIndex].name : "Player";
         db.ref('rooms/' + currentRoomId + '/messages').push({ playerIndex: myPlayerIndex, name: myName, text: emoji, timestamp: Date.now() });
-        db.ref(`rooms/${currentRoomId}/emojis/${myPlayerIndex}`).set({ emoji: emoji, timestamp: Date.now() });
     }
     
     document.getElementById('chat-input').addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
     
     function displayChatMessage(msg, isNew = true) {
-        let container = document.getElementById('chat-messages'); let div = document.createElement('div'); div.className = 'chat-msg';
+        let container = document.getElementById('chat-messages'); 
+        let div = document.createElement('div'); div.className = 'chat-msg';
         let displayName = msg.name || ("Player " + (msg.playerIndex + 1));
         if (msg.playerIndex === myPlayerIndex) displayName += " (You)";
         let color = (msg.playerIndex >= 0 && msg.playerIndex < 4) ? COLORS[msg.playerIndex] : '#94a3b8';
         div.innerHTML = `<div class="chat-sender" style="color:${color}">${displayName}</div><div>${msg.text}</div>`;
-        if (isNew) { div.classList.add('new-msg'); if (msg.playerIndex !== myPlayerIndex) playSound('notification'); }
-        container.appendChild(div); container.scrollTop = container.scrollHeight;
+        
+        if (isNew) { 
+            div.classList.add('new-msg'); 
+            if (msg.playerIndex !== myPlayerIndex) playSound('notification'); 
+            showBubble(msg.playerIndex, msg.text);
+        }
+        
+        container.appendChild(div); 
+        
+        while (container.children.length > 5) {
+            container.removeChild(container.firstChild);
+        }
+        
+        container.scrollTop = container.scrollHeight;
     }
 
     function toggleAdmin() {
@@ -2104,4 +2144,3 @@
 
 </body>
 </html>
-
