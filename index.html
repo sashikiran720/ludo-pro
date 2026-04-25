@@ -4,9 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Multiplayer Ludo Pro</title>
-    <title>Play Ludo Online Multiplayer Free</title>
-
-<meta name="description" content="Play Ludo online with friends. Real-time multiplayer, voice chat, emojis and smooth gameplay. Free Ludo game.">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&display=swap');
 
@@ -59,19 +56,20 @@
             -webkit-backdrop-filter: blur(15px);
             border: 1px solid var(--glass-border);
             color: var(--text);
-            padding: 30px;
-            border-radius: 20px;
+            padding: 40px 30px;
+            border-radius: 24px;
             box-shadow: 0 20px 50px rgba(0,0,0,0.5);
             text-align: center;
             width: 100%;
             max-width: 420px;
             margin: auto;
+            position: relative;
         }
 
-        .lobby-box h1 { margin-top: 0; font-size: 36px; color: var(--blue); font-weight: 800; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 10px rgba(41, 121, 255, 0.5);}
-        .lobby-box p { color: #94a3b8; margin-bottom: 20px; font-weight: 600; }
+        .lobby-box h1 { margin-top: 0; font-size: 40px; color: var(--blue); font-weight: 800; text-transform: uppercase; letter-spacing: 2px; text-shadow: 0 0 15px rgba(41, 121, 255, 0.5);}
+        .lobby-box p { color: #94a3b8; margin-bottom: 40px; font-weight: 600; font-size: 16px; }
         
-        .color-selector { display: flex; justify-content: space-around; margin: 10px 0 25px; position: relative; }
+        .color-selector { display: flex; justify-content: space-around; margin: 15px 0 25px; position: relative; }
         
         .color-opt {
             width: 50px; height: 50px; border-radius: 50%; cursor: pointer; position: relative;
@@ -98,22 +96,22 @@
             top: 110%;
             left: 50%;
             transform: translateX(-50%);
-            font-size: 10px;
-            color: var(--red);
+            font-size: 11px;
+            color: #ff4757;
             font-weight: bold;
-            background: rgba(0,0,0,0.6);
-            padding: 2px 6px;
-            border-radius: 4px;
+            background: rgba(0,0,0,0.8);
+            padding: 3px 8px;
+            border-radius: 6px;
         }
 
-        .lobby-select, .lobby-box input[type="text"] {
+        .lobby-select, input[type="text"] {
             width: 100%; padding: 16px; margin-bottom: 20px; border: 1px solid var(--glass-border);
             border-radius: 12px; font-size: 16px; text-align: center;
             background: rgba(15, 23, 42, 0.6); color: #fff; cursor: pointer; font-family: inherit; font-weight: 600;
             transition: all 0.3s ease;
         }
         
-        .lobby-select:focus, .lobby-box input[type="text"]:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 15px rgba(41, 121, 255, 0.4); }
+        .lobby-select:focus, input[type="text"]:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 15px rgba(41, 121, 255, 0.4); }
         .lobby-select option { background: #0f172a; color: #fff; }
         
         .lobby-btn {
@@ -123,13 +121,45 @@
             box-shadow: 0 5px 15px rgba(41, 121, 255, 0.4);
         }
         .lobby-btn.create { background: linear-gradient(135deg, var(--green), #00c853); box-shadow: 0 5px 15px rgba(0, 230, 118, 0.4); }
+        .lobby-btn.robot-btn { background: linear-gradient(135deg, #8b5cf6, #d946ef); box-shadow: 0 5px 15px rgba(217, 70, 239, 0.4); }
+        
         .lobby-btn:hover { transform: translateY(-3px) scale(1.02); box-shadow: 0 10px 20px rgba(0,0,0,0.4); }
         .lobby-btn:active { transform: translateY(0) scale(0.98); }
+        
+        .main-btn {
+            padding: 20px;
+            font-size: 20px;
+            margin-bottom: 20px;
+            border-radius: 16px;
+        }
+
+        /* Modals */
+        .modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.85); display: none; justify-content: center; align-items: center;
+            z-index: 10000; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+            animation: fadeIn 0.3s ease;
+        }
+        .modal-content {
+            background: var(--panel); padding: 40px 30px; border-radius: 24px; text-align: center;
+            max-width: 380px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.6); 
+            border: 1px solid var(--glass-border); color: #fff; position: relative;
+            animation: scaleUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .modal-content h2 { margin-top: 0; font-size: 28px; font-weight: 800; text-transform: uppercase; margin-bottom: 25px; color: var(--blue);}
+        .close-modal {
+            position: absolute; top: 15px; right: 20px; font-size: 24px; font-weight: bold;
+            color: #94a3b8; cursor: pointer; transition: color 0.2s; background: none; border: none;
+        }
+        .close-modal:hover { color: #fff; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleUp { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
         /* Game App Layout */
         #app {
             display: flex; flex-direction: column; align-items: center; min-height: 100vh;
-            padding: 15px; padding-bottom: 150px; /* Space for fixed bottom dice */ gap: 20px; width: 100%; max-width: 100%; margin: 0 auto; overflow-x: hidden;
+            padding: 15px; padding-bottom: 150px; gap: 20px; width: 100%; max-width: 100%; margin: 0 auto; overflow-x: hidden;
         }
 
         /* Strict 3x3 Ludo Grid Layout */
@@ -146,12 +176,12 @@
         
         .player-slot-container:empty { display: none !important; }
         
-        #slot-0 { grid-column: 1; grid-row: 1; justify-self: start; align-self: end; }   /* Red: TL */
-        #slot-1 { grid-column: 3; grid-row: 1; justify-self: end; align-self: end; }     /* Green: TR */
-        #slot-3 { grid-column: 1; grid-row: 3; justify-self: start; align-self: start; } /* Blue: BL */
-        #slot-2 { grid-column: 3; grid-row: 3; justify-self: end; align-self: start; }   /* Yellow: BR */
+        #slot-0 { grid-column: 1; grid-row: 1; justify-self: start; align-self: end; }   
+        #slot-1 { grid-column: 3; grid-row: 1; justify-self: end; align-self: end; }     
+        #slot-3 { grid-column: 1; grid-row: 3; justify-self: start; align-self: start; } 
+        #slot-2 { grid-column: 3; grid-row: 3; justify-self: end; align-self: start; }   
 
-        /* Board Wrapper strictly in center, spanning columns to prevent squishing */
+        /* Board Wrapper strictly in center */
         #board-wrapper {
             grid-column: 1 / 4;
             grid-row: 2;
@@ -172,7 +202,7 @@
             display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px;
             max-width: 100px; width: 100px; 
             transition: all 0.3s; box-shadow: 0 4px 15px rgba(0,0,0,0.3); position: relative;
-            overflow: visible; /* FIXED: Prevent emoji clipping */
+            overflow: visible; 
             z-index: 5;
         }
 
@@ -192,10 +222,10 @@
         .player-score { font-size: 10px; color: #38bdf8; font-weight: 800; margin: 2px 0; }
         .player-status { font-size: 9px; color: #94a3b8; font-weight: 600;}
 
-        /* Emoji Bubble - Fixed Animation & Positioning */
+        /* Emoji Bubble */
         .emoji-bubble {
             position: absolute;
-            top: -15px; /* FIXED: Close to the card */
+            top: -15px; 
             left: 50%;
             transform: translateX(-50%) scale(0);
             background: #fff;
@@ -206,7 +236,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             opacity: 0;
             pointer-events: none;
-            z-index: 100; /* High z-index */
+            z-index: 100; 
             white-space: nowrap;
         }
 
@@ -263,7 +293,7 @@
         }
         .safe-star { color: #cbd5e1; font-size: 1.2em; text-shadow: 0 1px 2px rgba(0,0,0,0.3); }
 
-        /* Tokens - Ludo King Style Glossy */
+        /* Tokens */
         #tokens-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
 
         .token {
@@ -289,20 +319,13 @@
             background: rgba(255,255,255,0.8); border-radius: 50%; transform: rotate(-30deg); filter: blur(1px);
         }
 
-        /* Strictly turn-based smart glow pulse */
         .token.active-turn {
             animation: token-pulse 1.5s infinite alternate; 
             z-index: 20;
         }
         @keyframes token-pulse { 
-            0% { 
-                filter: brightness(1); 
-                box-shadow: 0 0 8px 2px currentColor, inset 0 -4px 6px rgba(0,0,0,0.4), inset 0 3px 6px rgba(255,255,255,0.6); 
-            } 
-            100% { 
-                filter: brightness(1.3); 
-                box-shadow: 0 0 18px 6px currentColor, inset 0 -4px 6px rgba(0,0,0,0.4), inset 0 3px 6px rgba(255,255,255,0.6); 
-            } 
+            0% { filter: brightness(1); box-shadow: 0 0 8px 2px currentColor, inset 0 -4px 6px rgba(0,0,0,0.4), inset 0 3px 6px rgba(255,255,255,0.6); } 
+            100% { filter: brightness(1.3); box-shadow: 0 0 18px 6px currentColor, inset 0 -4px 6px rgba(0,0,0,0.4), inset 0 3px 6px rgba(255,255,255,0.6); } 
         }
         
         .token:hover { transform: translate(-50%, -50%) scale(1.1) !important; z-index: 30; }
@@ -344,15 +367,13 @@
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
 
-        /* ---------------------------------------------------
-           FIXED BOTTOM DICE (LUDO KING STYLE)
-           --------------------------------------------------- */
+        /* Fixed Bottom Dice */
         #fixed-dice-container {
             position: fixed;
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
-            display: none; /* Toggled to flex by JS */
+            display: none; 
             flex-direction: column;
             align-items: center;
             justify-content: center;
@@ -377,7 +398,7 @@
                 inset -4px -4px 8px rgba(0,0,0,0.15), 
                 inset 4px 4px 8px rgba(255,255,255,1), 
                 0 10px 25px rgba(0,0,0,0.6),
-                0 0 20px rgba(255, 255, 255, 0.3); /* Premium Glow */
+                0 0 20px rgba(255, 255, 255, 0.3); 
             display: grid; 
             grid-template-columns: repeat(3, 1fr); 
             grid-template-rows: repeat(3, 1fr);
@@ -397,10 +418,7 @@
                 0 0 10px rgba(255, 255, 255, 0.2); 
         }
 
-        .dice.rolling { 
-            animation: dice-roll-anim 0.4s infinite linear; 
-            pointer-events: none; 
-        }
+        .dice.rolling { animation: dice-roll-anim 0.4s infinite linear; pointer-events: none; }
 
         .dot { 
             background: #0f172a; 
@@ -439,17 +457,8 @@
             letter-spacing: 1px;
         }
 
-        .roll-btn.main-fixed:active:not(:disabled) { 
-            transform: translateY(3px) scale(0.98); 
-            box-shadow: none; 
-        }
-
-        .roll-btn.main-fixed:disabled { 
-            background: #334155; 
-            color: #94a3b8; 
-            cursor: not-allowed; 
-            box-shadow: none; 
-        }
+        .roll-btn.main-fixed:active:not(:disabled) { transform: translateY(3px) scale(0.98); box-shadow: none; }
+        .roll-btn.main-fixed:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; box-shadow: none; }
 
         /* Voice Controls */
         #voice-controls { margin-top: 15px; padding: 15px; background: rgba(0,0,0,0.3); border-radius: 12px; border: 1px solid var(--glass-border); }
@@ -494,23 +503,13 @@
         #toast {
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
             background: var(--green); color: #fff; padding: 12px 25px; font-size: 16px;
-            border-radius: 30px; z-index: 1000; display: none; font-weight: 800;
+            border-radius: 30px; z-index: 100000; display: none; font-weight: 800;
             box-shadow: 0 10px 20px rgba(0,0,0,0.5); text-transform: uppercase;
         }
         @keyframes fadein { from { top: -20px; opacity: 0; } to { top: 20px; opacity: 1; } }
         @keyframes fadeout { from { top: 20px; opacity: 1; } to { top: -20px; opacity: 0; } }
 
-        /* Modals */
-        .modal {
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(15, 23, 42, 0.9); display: none; justify-content: center; align-items: center;
-            z-index: 100; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-        }
-        .modal-content {
-            background: var(--panel); padding: 40px; border-radius: 20px; text-align: center;
-            max-width: 350px; width: 90%; box-shadow: 0 20px 50px rgba(0,0,0,0.5); border: 1px solid var(--glass-border); color: #fff;
-        }
-        .modal-content h2 { margin-top: 0; font-size: 32px; font-weight: 800; text-transform: uppercase; margin-bottom: 20px; text-shadow: 0 0 10px rgba(255, 42, 95, 0.5);}
+        /* Confetti */
         .confetti { position: absolute; width: 10px; height: 10px; background-color: #f00; animation: fall 3s linear infinite; z-index: 101;}
         @keyframes fall { to { transform: translateY(100vh) rotate(720deg); } }
 
@@ -534,20 +533,13 @@
             .panels-container { flex-direction: column; }
             #board-wrapper { width: 95vw; }
             
-            #fixed-dice-container {
-                bottom: 20px;
-                gap: 10px;
-            }
-            .dice {
-                width: 56px;
-                height: 56px;
-                padding: 10px;
-            }
-            .dot {
-                width: 10px;
-                height: 10px;
-            }
+            #fixed-dice-container { bottom: 20px; gap: 10px; }
+            .dice { width: 56px; height: 56px; padding: 10px; }
+            .dot { width: 10px; height: 10px; }
             .roll-btn.main-fixed { padding: 8px 20px; font-size: 14px; }
+            
+            .lobby-box h1 { font-size: 32px; }
+            .main-btn { font-size: 16px; padding: 15px; }
         }
     </style>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -555,43 +547,88 @@
 </head>
 <body>
 
+    <!-- Simplified Homepage Lobby -->
     <div id="lobby">
         <div class="lobby-box">
             <h1>Ludo Pro</h1>
             <p>Real-Time Multiplayer Experience</p>
+            <button class="lobby-btn create main-btn" onclick="showCreateModal()">Create Room</button>
+            <button class="lobby-btn main-btn" onclick="showJoinModal()">Join Room</button>
+            <button class="lobby-btn robot-btn main-btn" onclick="showRobotModal()">Play With Robot</button>
+        </div>
+        <div class="footer-credits">
+            Made with ❤️ by sk<br>
+            <a href="https://instagram.com/king__of_technology" target="_blank">Follow king__of_technology on Instagram</a>
+        </div>
+    </div>
 
-            <input type="text" id="player-name" placeholder="Enter Your Name" maxlength="15">
+    <!-- Create Room Modal -->
+    <div id="create-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="hideModals()">&times;</button>
+            <h2>Create Room</h2>
+            <input type="text" id="create-name" class="lobby-select" placeholder="Enter Your Name" maxlength="15">
+            
+            <label style="display:block; text-align:left; font-weight:bold; margin-bottom:8px; color:#94a3b8;">Select Mode:</label>
+            <select id="create-mode" class="lobby-select">
+                <option value="2">2 Players</option>
+                <option value="3">3 Players</option>
+                <option value="4" selected>4 Players</option>
+            </select>
+            
+            <button class="lobby-btn create" style="margin-top: 10px;" onclick="proceedToColorFromCreate()">Create & Enter Room</button>
+        </div>
+    </div>
 
-            <label style="display:block; text-align:left; font-weight:bold; margin-bottom:8px; color:#94a3b8;">Select Your Color:</label>
-            <div class="color-selector" id="color-selector">
+    <!-- Join Room Modal -->
+    <div id="join-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="hideModals()">&times;</button>
+            <h2>Join Room</h2>
+            <input type="text" id="join-name" class="lobby-select" placeholder="Enter Your Name" maxlength="15">
+            <input type="text" id="join-room-id" class="lobby-select" placeholder="Enter Room ID">
+            <button class="lobby-btn" style="margin-top: 10px;" onclick="proceedToColorFromJoin()">Join Room</button>
+        </div>
+    </div>
+
+    <!-- Play with Robot Modal -->
+    <div id="robot-modal" class="modal">
+        <div class="modal-content">
+            <button class="close-modal" onclick="hideModals()">&times;</button>
+            <h2>Play vs Robot</h2>
+            <input type="text" id="robot-name" class="lobby-select" placeholder="Enter Your Name" maxlength="15">
+            
+            <label style="display:block; text-align:left; font-weight:bold; margin-bottom:8px; color:#94a3b8;">Number of Bots:</label>
+            <select id="robot-count" class="lobby-select">
+                <option value="1">1 Bot (2 Players)</option>
+                <option value="2">2 Bots (3 Players)</option>
+                <option value="3" selected>3 Bots (4 Players)</option>
+            </select>
+            
+            <label style="display:block; text-align:left; font-weight:bold; margin-bottom:8px; color:#94a3b8;">Optional: Pick Your Color</label>
+            <div class="color-selector" id="robot-color-selector">
                 <div class="color-opt" data-color="0" style="background:var(--red)"></div>
                 <div class="color-opt" data-color="1" style="background:var(--green)"></div>
                 <div class="color-opt" data-color="2" style="background:var(--yellow)"></div>
                 <div class="color-opt" data-color="3" style="background:var(--blue)"></div>
             </div>
             
-            <label style="display:block; text-align:left; font-weight:bold; margin-bottom:8px; color:#94a3b8;">Select Mode:</label>
-            <select id="player-count" class="lobby-select">
-                <option value="1">1 Player (vs Robot)</option>
-                <option value="2">2 Players</option>
-                <option value="3">3 Players</option>
-                <option value="4" selected>4 Players</option>
-            </select>
-
-            <label style="display:block; text-align:left; font-weight:bold; margin-bottom:8px; color:#94a3b8;">Turn Time:</label>
-            <select id="turn-time" class="lobby-select">
-                <option value="20">20 Seconds</option>
-                <option value="30" selected>30 Seconds</option>
-            </select>
-            
-            <button class="lobby-btn create" onclick="createRoom()">Create Room</button>
-            <div style="margin: 20px 0; font-weight: bold; color: #94a3b8;">— OR —</div>
-            <input type="text" id="room-input" placeholder="Enter Room ID">
-            <button class="lobby-btn" onclick="joinRoom()">Join Room</button>
+            <button class="lobby-btn robot-btn" style="margin-top: 10px;" onclick="startRobotGame()">Start Game</button>
         </div>
-        <div class="footer-credits">
-            Made with ❤️ by sk<br>
-            <a href="https://instagram.com/king__of_technology" target="_blank">Follow king__of_technology on Instagram</a>
+    </div>
+
+    <!-- Color Selection Modal (Multiplayer) -->
+    <div id="color-modal" class="modal">
+        <div class="modal-content">
+            <h2>Choose Your Color</h2>
+            <div class="color-selector" id="modal-color-selector">
+                <div class="color-opt" data-color="0" style="background:var(--red)"></div>
+                <div class="color-opt" data-color="1" style="background:var(--green)"></div>
+                <div class="color-opt" data-color="2" style="background:var(--yellow)"></div>
+                <div class="color-opt" data-color="3" style="background:var(--blue)"></div>
+            </div>
+            <p id="color-timer-text" style="color: #94a3b8; font-size: 13px; margin-bottom: 20px; font-weight: 600;">Auto-assigning in 15s...</p>
+            <button class="lobby-btn create" id="finalize-room-btn" onclick="finalizeRoomEntry()">Enter Game</button>
         </div>
     </div>
 
@@ -693,7 +730,7 @@
         </div>
     </div>
 
-    <!-- Fixed Bottom Dice Container (Perfect Center, Separated Button & Dice) -->
+    <!-- Fixed Bottom Dice Container -->
     <div id="fixed-dice-container">
         <button id="main-roll-btn" class="roll-btn main-fixed" onclick="performUserRoll()">ROLL DICE</button>
         <div id="dice" class="dice" onclick="performUserRoll()">
@@ -744,18 +781,51 @@
     // -----------------------------------------
     // GLOBALS & SETUP
     // -----------------------------------------
+    const firebaseConfig = {
+      apiKey: "AIzaSyC7D9-iJfFRpujaYXa9NR1Vwq5KfDONX1Q", authDomain: "ludo-multiplayer-1fd0d.firebaseapp.com",
+      databaseURL: "https://ludo-multiplayer-1fd0d-default-rtdb.firebaseio.com/", projectId: "ludo-multiplayer-1fd0d",
+      storageBucket: "ludo-multiplayer-1fd0d.firebasestorage.app", messagingSenderId: "128829726569", appId: "1:128829726569:web:dad6f2d4fffa98dcd0a7f8"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    let localUserId = localStorage.getItem('ludo_userId');
+    if (!localUserId) { localUserId = 'user_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('ludo_userId', localUserId); }
+
+    let serverTimeOffset = 0;
+    db.ref(".info/serverTimeOffset").on("value", snap => serverTimeOffset = snap.val() || 0);
+
+    // Flow State Variables
+    let flowType = '';
+    let pendingName = '';
+    let pendingMode = 4;
+    let pendingRoomId = '';
+    let colorTimer = null;
+    let lobbyRoomRef = null;
+
     let selectedColorIndex = -1;
+    let robotSelectedColor = -1;
     let takenColors =[];
     
-    document.querySelectorAll('.color-opt').forEach(opt => {
+    // Bind Color Modal Selectors
+    document.querySelectorAll('#modal-color-selector .color-opt').forEach(opt => {
         opt.addEventListener('click', (e) => {
             if (opt.classList.contains('taken')) {
                 showToast("This color is already taken!", true);
                 return;
             }
-            document.querySelectorAll('.color-opt').forEach(o => o.classList.remove('selected'));
+            document.querySelectorAll('#modal-color-selector .color-opt').forEach(o => o.classList.remove('selected'));
             opt.classList.add('selected');
             selectedColorIndex = parseInt(opt.dataset.color);
+        });
+    });
+
+    // Bind Robot Color Selector
+    document.querySelectorAll('#robot-color-selector .color-opt').forEach(opt => {
+        opt.addEventListener('click', (e) => {
+            document.querySelectorAll('#robot-color-selector .color-opt').forEach(o => o.classList.remove('selected'));
+            opt.classList.add('selected');
+            robotSelectedColor = parseInt(opt.dataset.color);
         });
     });
 
@@ -841,20 +911,6 @@
         }
     }
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyC7D9-iJfFRpujaYXa9NR1Vwq5KfDONX1Q", authDomain: "ludo-multiplayer-1fd0d.firebaseapp.com",
-      databaseURL: "https://ludo-multiplayer-1fd0d-default-rtdb.firebaseio.com/", projectId: "ludo-multiplayer-1fd0d",
-      storageBucket: "ludo-multiplayer-1fd0d.firebasestorage.app", messagingSenderId: "128829726569", appId: "1:128829726569:web:dad6f2d4fffa98dcd0a7f8"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-
-    let localUserId = localStorage.getItem('ludo_userId');
-    if (!localUserId) { localUserId = 'user_' + Math.random().toString(36).substr(2, 9); localStorage.setItem('ludo_userId', localUserId); }
-
-    let serverTimeOffset = 0;
-    db.ref(".info/serverTimeOffset").on("value", snap => serverTimeOffset = snap.val() || 0);
-
     const COLORS =['#ff2a5f', '#00e676', '#ffea00', '#2979ff'];
     const PLAYER_NAMES =['Red', 'Green', 'Yellow', 'Blue'];
     const TRACK = [[6,0],[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6], [2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0]];
@@ -867,21 +923,153 @@
 
     let currentRoomId = null, adminMode = false, isAdmin = false, isHost = false, robotThinking = false, myPlayerIndex = -1, chatLoaded = false;
     let syncQueue =[], isSyncing = false, localRollCount = 0, consecutiveSixCount = 0, turnDeadline = 0, turnTimerInterval = null;
-    let gameStarted = false, requiredPlayers = 4, turnTimeLength = 30000, adminDiceControl = false;
+    let gameStarted = false, requiredPlayers = 4, turnTimeLength = 20000, adminDiceControl = false;
     let visualPlayers = null, players =[], currentTurn = 0, diceValue = 1, GAME_STATE = 'WAITING_ROLL'; 
 
-    // Live Color Selection UX (Room Specific)
-    let lobbyRoomRef = null;
-    document.getElementById('room-input').addEventListener('input', (e) => {
-        let rid = e.target.value.trim();
-        if (lobbyRoomRef) lobbyRoomRef.off('value');
-        if (rid.length > 0) {
-            lobbyRoomRef = db.ref('rooms/' + rid + '/players');
+    // -----------------------------------------
+    // LOBBY & MODAL UI FLOW
+    // -----------------------------------------
+    function showCreateModal() { hideModals(); document.getElementById('create-modal').style.display = 'flex'; }
+    function showJoinModal() { hideModals(); document.getElementById('join-modal').style.display = 'flex'; }
+    function showRobotModal() { hideModals(); document.getElementById('robot-modal').style.display = 'flex'; }
+    
+    function hideModals() {
+        document.getElementById('create-modal').style.display = 'none';
+        document.getElementById('join-modal').style.display = 'none';
+        document.getElementById('robot-modal').style.display = 'none';
+        document.getElementById('color-modal').style.display = 'none';
+        if (lobbyRoomRef) { lobbyRoomRef.off('value'); lobbyRoomRef = null; }
+        clearTimeout(colorTimer);
+    }
+
+    function proceedToColorFromCreate() {
+        pendingName = document.getElementById('create-name').value.trim();
+        if (!pendingName) return showToast("Please enter your name!", true);
+        
+        pendingMode = parseInt(document.getElementById('create-mode').value);
+        flowType = 'create';
+        selectedColorIndex = -1; 
+        
+        updateColorUX(null); // All available
+        
+        hideModals();
+        document.getElementById('color-modal').style.display = 'flex';
+        startColorTimer();
+    }
+
+    function proceedToColorFromJoin() {
+        pendingName = document.getElementById('join-name').value.trim();
+        pendingRoomId = document.getElementById('join-room-id').value.trim();
+        
+        if (!pendingName) return showToast("Please enter your name!", true);
+        if (!pendingRoomId) return showToast("Please enter Room ID!", true);
+        
+        db.ref('rooms/' + pendingRoomId).once('value', snapshot => {
+            if (!snapshot.exists()) return showToast("Room not found!", true);
+            
+            flowType = 'join';
+            selectedColorIndex = -1; 
+            
+            // Live sync taken colors
+            if (lobbyRoomRef) lobbyRoomRef.off('value');
+            lobbyRoomRef = db.ref('rooms/' + pendingRoomId + '/players');
             lobbyRoomRef.on('value', snap => { updateColorUX(snap.val()); });
-        } else {
-            updateColorUX(null);
+            
+            hideModals();
+            document.getElementById('color-modal').style.display = 'flex';
+            startColorTimer();
+        });
+    }
+
+    async function startRobotGame() {
+        initAudio();
+        let myName = document.getElementById('robot-name').value.trim() || "Player";
+        let botCount = parseInt(document.getElementById('robot-count').value);
+
+        if (robotSelectedColor === -1) {
+            robotSelectedColor = Math.floor(Math.random() * 4);
         }
-    });
+
+        let pData =[null, null, null, null];
+        for(let i=0; i<4; i++) {
+            pData[i] = { active: false, isRobot: false, userId: null, name: "Waiting...", score: 0, tokens: [-1,-1,-1,-1] };
+        }
+
+        pData[robotSelectedColor] = { active: true, isRobot: false, userId: localUserId, name: myName, score: 0, tokens:[-1,-1,-1,-1] };
+
+        let availableColors =[0,1,2,3].filter(c => c !== robotSelectedColor);
+        availableColors.sort(() => Math.random() - 0.5);
+
+        for (let i = 0; i < botCount; i++) {
+            let botColor = availableColors[i];
+            pData[botColor] = { active: true, isRobot: true, userId: 'robot', name: PLAYER_NAMES[botColor] + ' Robot', score: 0, tokens:[-1,-1,-1,-1] };
+        }
+
+        let roomId; let isUnique = false;
+        while (!isUnique) {
+            roomId = Math.floor(100000 + Math.random() * 900000).toString();
+            let snapshot = await db.ref('rooms/' + roomId).once('value');
+            if (!snapshot.exists()) isUnique = true;
+        }
+
+        db.ref('rooms/' + roomId).set({ 
+            diceValue: 1, rollCount: 0, currentTurn: robotSelectedColor, gameState: 'WAITING_ROLL', 
+            consecutiveSixCount: 0, turnDeadline: Date.now() + serverTimeOffset + 20000, players: pData, requiredPlayers: botCount + 1,
+            gameStarted: true, turnTimeLength: 20000, adminDiceControl: false,
+            settings: { voiceEnabled: false, chatEnabled: false }, 
+            finishedPlayers:[], results:[]
+        }).then(() => {
+            pendingName = myName; 
+            selectedColorIndex = robotSelectedColor;
+            executeJoinRoom(roomId);
+        });
+    }
+
+    function startColorTimer() {
+        clearTimeout(colorTimer);
+        let timeLeft = 15;
+        const timerText = document.getElementById('color-timer-text');
+        timerText.innerText = `Auto-assigning in ${timeLeft}s...`;
+        
+        colorTimer = setInterval(() => {
+            timeLeft--;
+            timerText.innerText = `Auto-assigning in ${timeLeft}s...`;
+            if (timeLeft <= 0) {
+                clearInterval(colorTimer);
+                autoAssignColor();
+            }
+        }, 1000);
+    }
+
+    function autoAssignColor() {
+        let available =[0,1,2,3].filter(c => !takenColors.includes(c));
+        if (available.length === 0) {
+            hideModals();
+            return showToast("Room is full!", true);
+        }
+        if (selectedColorIndex === -1 || takenColors.includes(selectedColorIndex)) {
+            selectedColorIndex = available[Math.floor(Math.random() * available.length)];
+        }
+        finalizeRoomEntry();
+    }
+
+    function finalizeRoomEntry() {
+        clearInterval(colorTimer);
+        
+        if (selectedColorIndex === -1) {
+            autoAssignColor();
+            return;
+        }
+        if (takenColors.includes(selectedColorIndex)) {
+            return showToast("Selected color is already taken!", true);
+        }
+
+        if (flowType === 'create') {
+            executeCreateRoom();
+        } else if (flowType === 'join') {
+            executeJoinRoom(pendingRoomId);
+        }
+    }
 
     function updateColorUX(playersData) {
         takenColors =[];
@@ -891,7 +1079,7 @@
                 if (p && p.active && (p.userId || p.isRobot)) takenColors.push(parseInt(i));
             });
         }
-        document.querySelectorAll('.color-opt').forEach(opt => {
+        document.querySelectorAll('#modal-color-selector .color-opt').forEach(opt => {
             let cIdx = parseInt(opt.dataset.color);
             if (takenColors.includes(cIdx)) {
                 opt.classList.add('taken');
@@ -921,7 +1109,7 @@
             if (parseInt(pIdx) === myPlayerIndex || isHost) {
                 setTimeout(() => {
                     db.ref(`rooms/${currentRoomId}/emojis/${pIdx}`).remove().catch(()=>{});
-                }, 3000); // clear after animation
+                }, 3000); 
             }
         }
     }
@@ -931,47 +1119,31 @@
         if(bubble) {
             bubble.innerText = emoji;
             bubble.classList.remove('show');
-            void bubble.offsetWidth; // trigger reflow to restart animation
+            void bubble.offsetWidth; 
             bubble.classList.add('show');
         }
     }
 
     // -----------------------------------------
-    // ROOM & INIT
+    // ROOM CORE EXECUTION
     // -----------------------------------------
-    async function createRoom() {
+    async function executeCreateRoom() {
         initAudio();
-        let myName = document.getElementById('player-name').value.trim();
-        if (!myName) return alert("Please enter your name!");
-        
-        let available =[0,1,2,3].filter(c => !takenColors.includes(c));
-        if (selectedColorIndex === -1 || takenColors.includes(selectedColorIndex)) {
-            if (available.length === 0) return alert("Room is full!");
-            selectedColorIndex = available[Math.floor(Math.random() * available.length)];
-        }
-
-        const count = parseInt(document.getElementById('player-count').value);
-        const turnTimeSec = parseInt(document.getElementById('turn-time').value);
-        turnTimeLength = turnTimeSec * 1000;
         isHost = true; 
-        let reqPlayers = count === 1 ? 2 : count;
+        let reqPlayers = pendingMode;
+        turnTimeLength = 20000;
 
         let pData =[null, null, null, null];
         for(let i=0; i<4; i++) {
-            pData[i] = { active: false, isRobot: false, userId: null, name: "Waiting...", score: 0, tokens:[-1,-1,-1,-1] };
+            pData[i] = { active: false, isRobot: false, userId: null, name: "Waiting...", score: 0, tokens: [-1,-1,-1,-1] };
         }
 
-        pData[selectedColorIndex] = { active: true, isRobot: false, userId: localUserId, name: myName, score: 0, tokens:[-1,-1,-1,-1] };
+        pData[selectedColorIndex] = { active: true, isRobot: false, userId: localUserId, name: pendingName, score: 0, tokens:[-1,-1,-1,-1] };
 
-        if (count === 1) {
-            let robotColor = (selectedColorIndex + 2) % 4; 
-            pData[robotColor] = { active: true, isRobot: true, userId: 'robot', name: PLAYER_NAMES[robotColor] + ' Robot', score: 0, tokens:[-1,-1,-1,-1] };
-        } else if (count === 2 || count === 3 || count === 4) {
-            let needed = count - 1;
-            let currentAvail =[0,1,2,3].filter(c => c !== selectedColorIndex);
-            for(let i=0; i<needed; i++) {
-                pData[currentAvail[i]].active = true;
-            }
+        let needed = pendingMode - 1;
+        let currentAvail =[0,1,2,3].filter(c => c !== selectedColorIndex);
+        for(let i=0; i<needed; i++) {
+            pData[currentAvail[i]].active = true;
         }
 
         let roomId; let isUnique = false;
@@ -987,18 +1159,11 @@
             gameStarted: false, turnTimeLength: turnTimeLength, adminDiceControl: false,
             settings: { voiceEnabled: true, chatEnabled: true },
             finishedPlayers:[], results:[]
-        }).then(() => joinRoom(roomId));
+        }).then(() => executeJoinRoom(roomId));
     }
 
-    function joinRoom(id) {
+    function executeJoinRoom(roomId) {
         initAudio();
-        let myName = document.getElementById('player-name').value.trim();
-        if (!myName && !id) return alert("Please enter your name!");
-        if (!myName) myName = "Player";
-        
-        const roomId = id || document.getElementById('room-input').value.trim();
-        if (!roomId) return alert("Enter Room ID");
-        
         db.ref('rooms/' + roomId).once('value', snapshot => {
             const data = snapshot.val();
             if (!data) {
@@ -1021,26 +1186,17 @@
             for (let i = 0; i < 4; i++) {
                 if (safePlayers[i].active && safePlayers[i].userId === localUserId) { 
                     myPlayerIndex = i; assigned = true; 
-                    db.ref(`rooms/${roomId}/players/${i}`).update({ name: myName });
+                    db.ref(`rooms/${roomId}/players/${i}`).update({ name: pendingName });
                     break; 
                 }
             }
             
             let updates = {};
             if (!assigned) {
-                let taken =[];
-                safePlayers.forEach((p, i) => { if (p && p.active && (p.userId || p.isRobot)) taken.push(i); });
-                let avail =[0,1,2,3].filter(c => !taken.includes(c) && safePlayers[c].active);
-
-                if (selectedColorIndex === -1 || taken.includes(selectedColorIndex) || !safePlayers[selectedColorIndex].active) {
-                    if (avail.length === 0) return alert("Room is full!");
-                    selectedColorIndex = avail[Math.floor(Math.random() * avail.length)];
-                }
-                
                 myPlayerIndex = selectedColorIndex; assigned = true;
                 
                 safePlayers[myPlayerIndex] = {
-                    active: true, isRobot: false, userId: localUserId, name: myName, score: 0, tokens:[-1,-1,-1,-1]
+                    active: true, isRobot: false, userId: localUserId, name: pendingName, score: 0, tokens:[-1,-1,-1,-1]
                 };
                 updates[`players/${myPlayerIndex}`] = safePlayers[myPlayerIndex];
             }
@@ -1048,7 +1204,7 @@
             let filledSlots = safePlayers.filter(p => p.active && (p.userId || p.isRobot)).length;
             if (filledSlots >= data.requiredPlayers && !data.gameStarted) {
                 updates['gameStarted'] = true;
-                updates['turnDeadline'] = Date.now() + serverTimeOffset + (data.turnTimeLength || 30000);
+                updates['turnDeadline'] = Date.now() + serverTimeOffset + (data.turnTimeLength || 20000);
             }
 
             if (Object.keys(updates).length > 0) db.ref('rooms/' + roomId).update(updates);
@@ -1059,10 +1215,10 @@
 
             localStorage.setItem('ludo_roomId', roomId);
             localStorage.setItem('ludo_playerIndex', myPlayerIndex);
-            localStorage.setItem('ludo_playerName', myName);
+            localStorage.setItem('ludo_playerName', pendingName);
 
             isInitialLoad = true; knownPlayers =[null, null, null, null];
-            if (lobbyRoomRef) { lobbyRoomRef.off('value'); lobbyRoomRef = null; }
+            hideModals();
             leaveVoice(); 
 
             document.getElementById('lobby').style.display = 'none';
@@ -1103,10 +1259,10 @@
         let savedPlayerName = localStorage.getItem('ludo_playerName');
         
         if (savedRoomId && savedPlayerIndex !== null) {
-            document.getElementById('player-name').value = savedPlayerName || "";
-            document.getElementById('room-input').value = savedRoomId;
+            pendingName = savedPlayerName || "Player";
+            pendingRoomId = savedRoomId;
             selectedColorIndex = parseInt(savedPlayerIndex);
-            joinRoom(savedRoomId);
+            executeJoinRoom(savedRoomId);
         }
     });
 
@@ -1160,7 +1316,6 @@
                 container.innerHTML = '';
                 container.appendChild(card);
             } else {
-                // Update elements individually to avoid destroying DOM states
                 let avatarEl = document.getElementById(`avatar-${i}`);
                 if(avatarEl) avatarEl.innerText = initial;
                 
@@ -1328,7 +1483,7 @@
         isSyncing = true; let data = syncQueue.shift();
         
         gameStarted = data.gameStarted || false; requiredPlayers = data.requiredPlayers || 4;
-        turnTimeLength = data.turnTimeLength || 30000; adminDiceControl = data.adminDiceControl || false;
+        turnTimeLength = data.turnTimeLength || 20000; adminDiceControl = data.adminDiceControl || false;
         finishedPlayers = data.finishedPlayers || []; results = data.results ||[];
         
         let settings = data.settings || { chatEnabled: true, voiceEnabled: true };
@@ -1494,7 +1649,6 @@
                 
                 el.style.color = COLORS[pIndex];
 
-                // Turn-based strictly controlled glow
                 if (pIndex === currentTurn && !isAnimatingTokens) {
                     if (GAME_STATE === 'WAITING_MOVE') {
                         if (currentMoves.length > 0) {
@@ -1563,7 +1717,7 @@
 
     async function animateTokensTo(newPlayers) {
         isAnimatingTokens = true;
-        updateTokensDOM(); // Refresh visually to disable glow during animation
+        updateTokensDOM(); 
 
         for(let p=0; p<4; p++) {
             if(!newPlayers[p] || !newPlayers[p].active) continue;
@@ -1611,7 +1765,7 @@
         }
 
         isAnimatingTokens = false;
-        updateTokensDOM(); // Restore correct turn-based glow
+        updateTokensDOM(); 
     }
 
     function showToast(msg, isError = false) {
@@ -1821,9 +1975,7 @@
     function sendQuickEmoji(emoji) {
         if (!currentRoomId || myPlayerIndex === -1) return;
         let myName = players[myPlayerIndex] ? players[myPlayerIndex].name : "Player";
-        // Send to chat
         db.ref('rooms/' + currentRoomId + '/messages').push({ playerIndex: myPlayerIndex, name: myName, text: emoji, timestamp: Date.now() });
-        // Trigger visual emoji bubble
         db.ref(`rooms/${currentRoomId}/emojis/${myPlayerIndex}`).set({ emoji: emoji, timestamp: Date.now() });
     }
     
@@ -1949,6 +2101,7 @@
         }
     }
 </script>
+
 </body>
 </html>
 
