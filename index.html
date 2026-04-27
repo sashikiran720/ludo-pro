@@ -862,10 +862,12 @@
 
     // WebRTC Globals
     let localStream = null;
-    let peerConnections = {}; 
+    let pc = null;
     const ICE_SERVERS = { iceServers:[{ urls: "stun:stun.l.google.com:19302" }] };
     let voiceJoined = false;
     let voiceMuted = false;
+    let webrtcRef = null;
+    let candidatesRef = null;
 
     // Animation & State Flags
     let isAnimatingTokens = false;
@@ -1354,21 +1356,17 @@
     async function toggleVoice() {
         if (!currentRoomId || myPlayerIndex === -1) return;
         
+        if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
+            alert("Voice chat requires secure connection");
+            return;
+        }
+
         if (!voiceJoined) {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                voiceJoined = true; voiceMuted = false;
+                voiceJoined = true; 
+                voiceMuted = false;
                 
-                for(let i=0; i<4; i++) {
-                    if(i !== myPlayerIndex) {
-                        let audio = document.getElementById(`audio-peer-${i}`);
-                        if (!audio) {
-                            audio = document.createElement('audio'); audio.id = `audio-peer-${i}`;
-                            audio.autoplay = true; document.getElementById('audio-container').appendChild(audio);
-                        }
-                    }
-                }
-
                 document.getElementById('join-voice-btn').innerText = "Leave Voice";
                 document.getElementById('join-voice-btn').style.background = "linear-gradient(135deg, var(--red), #d32f2f)";
                 document.getElementById('mute-voice-btn').style.display = "inline-block";
@@ -1377,25 +1375,84 @@
                 document.getElementById('voice-status').innerText = "Connected";
                 document.getElementById('voice-status').style.color = "var(--green)";
                 
-                db.ref(`rooms/${currentRoomId}/voice_users/${myPlayerIndex}`).set(true);
-                db.ref(`rooms/${currentRoomId}/voice_users/${myPlayerIndex}`).onDisconnect().remove();
+                webrtcRef = db.ref(`rooms/${currentRoomId}/webrtc`);
+                candidatesRef = db.ref(`rooms/${currentRoomId}/webrtc/candidates`);
+
+                pc = new RTCPeerConnection(ICE_SERVERS);
                 
-                db.ref(`rooms/${currentRoomId}/signals/${myPlayerIndex}`).on('child_added', handleSignal);
-                
-                db.ref(`rooms/${currentRoomId}/voice_users`).on('value', snap => {
-                    const users = snap.val() || {};
-                    for (let peerIdx in users) {
-                        peerIdx = parseInt(peerIdx);
-                        if (peerIdx !== myPlayerIndex && users[peerIdx]) {
-                            if (myPlayerIndex < peerIdx && !peerConnections[peerIdx]) initiateCall(peerIdx);
+                localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+                pc.onicecandidate = (event) => {
+                    if (event.candidate) {
+                        candidatesRef.push({
+                            candidate: event.candidate.toJSON(),
+                            sender: myPlayerIndex
+                        });
+                    }
+                };
+
+                pc.ontrack = (event) => {
+                    let audio = document.getElementById('remote-audio');
+                    if (!audio) {
+                        audio = document.createElement('audio'); 
+                        audio.id = 'remote-audio';
+                        audio.autoplay = true; 
+                        document.getElementById('audio-container').appendChild(audio);
+                    }
+                    audio.srcObject = event.streams[0];
+                };
+
+                webrtcRef.child('offer').once('value', async (snap) => {
+                    const offer = snap.val();
+                    if (offer && offer.sender !== myPlayerIndex) {
+                        // We are receiver
+                        await pc.setRemoteDescription(new RTCSessionDescription(offer.sdp));
+                        const answer = await pc.createAnswer();
+                        await pc.setLocalDescription(answer);
+                        webrtcRef.child('answer').set({
+                            sdp: answer,
+                            sender: myPlayerIndex
+                        });
+                    } else {
+                        // We are caller
+                        webrtcRef.remove(); // clear old sessions
+                        const newOffer = await pc.createOffer();
+                        await pc.setLocalDescription(newOffer);
+                        webrtcRef.child('offer').set({
+                            sdp: newOffer,
+                            sender: myPlayerIndex
+                        });
+
+                        webrtcRef.child('answer').on('value', async (answerSnap) => {
+                            const answer = answerSnap.val();
+                            if (answer && answer.sender !== myPlayerIndex && pc.signalingState !== 'stable') {
+                                await pc.setRemoteDescription(new RTCSessionDescription(answer.sdp));
+                            }
+                        });
+                    }
+                    webrtcRef.onDisconnect().remove();
+                });
+
+                candidatesRef.on('child_added', async (snap) => {
+                    const data = snap.val();
+                    if (data && data.sender !== myPlayerIndex) {
+                        try {
+                            await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
+                        } catch (e) {
+                            console.error("Error adding received ice candidate", e);
                         }
                     }
-                    for (let peerIdx in peerConnections) {
-                        if (!users[peerIdx]) closePeerConnection(peerIdx);
-                    }
                 });
+
             } catch (e) {
-                showToast("Mic access denied", true); console.error(e);
+                if (e.name === 'NotAllowedError') {
+                    alert("Permission denied. Please allow microphone access.");
+                } else if (e.name === 'NotFoundError') {
+                    alert("No microphone found.");
+                } else {
+                    alert("Error accessing microphone: " + e.message);
+                }
+                console.error(e);
             }
         } else {
             leaveVoice();
@@ -1404,14 +1461,24 @@
 
     function leaveVoice() {
         voiceJoined = false;
-        if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
-        if (currentRoomId && myPlayerIndex !== -1) {
-            db.ref(`rooms/${currentRoomId}/voice_users/${myPlayerIndex}`).remove();
-            db.ref(`rooms/${currentRoomId}/signals/${myPlayerIndex}`).remove();
-            db.ref(`rooms/${currentRoomId}/signals/${myPlayerIndex}`).off('child_added', handleSignal);
-            db.ref(`rooms/${currentRoomId}/voice_users`).off('value');
+        
+        if (pc) {
+            pc.close();
+            pc = null;
         }
-        for (let peerIdx in peerConnections) closePeerConnection(peerIdx);
+
+        if (localStream) { 
+            localStream.getTracks().forEach(t => t.stop()); 
+            localStream = null; 
+        }
+        
+        if (webrtcRef) {
+            webrtcRef.off();
+            candidatesRef.off();
+            webrtcRef.remove();
+            webrtcRef = null;
+            candidatesRef = null;
+        }
         
         document.getElementById('join-voice-btn').innerText = "Join Voice";
         document.getElementById('join-voice-btn').style.background = "linear-gradient(135deg, var(--green), #00c853)";
@@ -1429,65 +1496,6 @@
             btn.innerText = voiceMuted ? "🔇 OFF" : "🎤 ON";
             btn.style.color = voiceMuted ? "var(--red)" : "var(--green)";
         }
-    }
-
-    function createPeerConnection(peerIdx) {
-        if (peerConnections[peerIdx]) return peerConnections[peerIdx];
-        const pc = new RTCPeerConnection(ICE_SERVERS); peerConnections[peerIdx] = pc;
-        if (localStream) localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-        
-        pc.onicecandidate = e => {
-            if (e.candidate) sendSignal(peerIdx, { type: 'candidate', candidate: JSON.parse(JSON.stringify(e.candidate)) });
-        };
-        
-        pc.ontrack = e => {
-            let audio = document.getElementById(`audio-peer-${peerIdx}`);
-            if (!audio) {
-                audio = document.createElement('audio'); audio.id = `audio-peer-${peerIdx}`;
-                audio.autoplay = true; document.getElementById('audio-container').appendChild(audio);
-            }
-            audio.srcObject = e.streams[0];
-        };
-        return pc;
-    }
-
-    function closePeerConnection(peerIdx) {
-        if (peerConnections[peerIdx]) { peerConnections[peerIdx].close(); delete peerConnections[peerIdx]; }
-        const audio = document.getElementById(`audio-peer-${peerIdx}`); if (audio) audio.srcObject = null;
-    }
-
-    async function initiateCall(peerIdx) {
-        try {
-            const pc = createPeerConnection(peerIdx);
-            const offer = await pc.createOffer();
-            await pc.setLocalDescription(offer);
-            sendSignal(peerIdx, { type: 'offer', sdp: { type: offer.type, sdp: offer.sdp } });
-        } catch(e) { console.error("Call init error", e); }
-    }
-
-    async function handleSignal(snap) {
-        const data = snap.val(); const senderIdx = data.sender;
-        if (senderIdx === myPlayerIndex) return;
-        
-        try {
-            const pc = createPeerConnection(senderIdx);
-            if (data.type === 'offer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-                const answer = await pc.createAnswer();
-                await pc.setLocalDescription(answer);
-                sendSignal(senderIdx, { type: 'answer', sdp: { type: answer.type, sdp: answer.sdp } });
-            } else if (data.type === 'answer') {
-                await pc.setRemoteDescription(new RTCSessionDescription(data.sdp));
-            } else if (data.type === 'candidate') {
-                await pc.addIceCandidate(new RTCIceCandidate(data.candidate));
-            }
-        } catch(e) { console.error("Handle signal error", e); }
-        snap.ref.remove();
-    }
-
-    function sendSignal(targetIdx, payload) {
-        payload.sender = myPlayerIndex;
-        db.ref(`rooms/${currentRoomId}/signals/${targetIdx}`).push(payload);
     }
 
     // -----------------------------------------
@@ -2038,7 +2046,7 @@
         }
         
         let isWin = newPlayers[pIndex].tokens.every(p => parseInt(p, 10) === 56);
-        let newFinished = [...finishedPlayers];
+        let newFinished =[...finishedPlayers];
 
         if (isWin && !newFinished.includes(pIndex)) { newFinished.push(pIndex); newPlayers[pIndex].score = (newPlayers[pIndex].score || 0) + 1; }
 
@@ -2241,4 +2249,3 @@
 
 </body>
 </html>
-
